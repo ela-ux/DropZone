@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DropZone — Custom Streetwear</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0A0A0C;--surface:#13131A;--card:#1A1A24;--border:#252530;--border2:#35353F;
+  --blue:#4F8EF7;--blue-dim:rgba(79,142,247,0.12);
+  --text:#F2F2F8;--muted:#7A7A95;--faint:#30303C;
+  --green:#2ECC8A;--green-bg:rgba(46,204,138,0.1);
+  --red:#F06B6B;--red-bg:rgba(240,107,107,0.1);
+  --yellow:#F5C542;--yellow-bg:rgba(245,197,66,0.1);
+}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:200;}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.14em;}
+.logo span{color:var(--blue);}
+nav{display:flex;align-items:center;gap:2px;}
+.tab-btn{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;padding:14px 13px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+.cart-btn{background:var(--blue);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:opacity .15s;}
+.cart-btn:hover{opacity:.85;}
+.cart-count{background:#fff;color:var(--blue);border-radius:10px;font-size:11px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center;}
+
+main{max-width:1020px;margin:0 auto;padding:2rem;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* CART */
+.cart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;}
+.cart-overlay.open{display:block;}
+.cart-drawer{position:fixed;right:0;top:0;bottom:0;width:360px;background:var(--surface);border-left:1px solid var(--border);z-index:301;padding:1.5rem;overflow-y:auto;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s;}
+.cart-drawer.open{transform:translateX(0);}
+.cart-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;}
+.cart-hd h2{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.1em;}
+.close-btn{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;}
+.close-btn:hover{color:var(--text);}
+.cart-items{flex:1;overflow-y:auto;}
+.cart-item{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);}
+.ci-icon{font-size:1.8rem;min-width:40px;text-align:center;}
+.ci-info{flex:1;}
+.ci-name{font-size:13px;font-weight:600;}
+.ci-price{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
+.ci-remove{background:none;border:none;color:var(--faint);cursor:pointer;font-size:1.1rem;}
+.ci-remove:hover{color:var(--red);}
+.cart-footer{border-top:1px solid var(--border);padding-top:1rem;margin-top:1rem;}
+.cart-line{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted);}
+.cart-line strong{color:var(--text);font-family:'JetBrains Mono',monospace;}
+.cart-total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding:10px 0;border-top:1px solid var(--border);margin-top:6px;}
+.cart-total span:last-child{font-family:'JetBrains Mono',monospace;color:var(--blue);}
+.checkout-btn{width:100%;background:var(--blue);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;border:none;border-radius:8px;padding:13px;cursor:pointer;margin-top:1rem;transition:opacity .15s;}
+.checkout-btn:hover{opacity:.85;}
+.empty-cart{color:var(--muted);text-align:center;padding:2rem 0;font-size:13px;}
+
+/* HERO */
+.hero{border-radius:14px;background:var(--card);border:1px solid var(--border);padding:3rem 2.5rem;margin-bottom:2rem;position:relative;overflow:hidden;}
+.hero::before{content:'DZ';font-family:'Bebas Neue',sans-serif;font-size:16rem;color:rgba(79,142,247,0.04);position:absolute;right:-1.5rem;top:-2rem;line-height:1;pointer-events:none;letter-spacing:.05em;}
+.hero-tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--blue);text-transform:uppercase;margin-bottom:.75rem;}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:3.5rem;letter-spacing:.1em;line-height:1.05;margin-bottom:1rem;}
+.hero p{color:var(--muted);font-size:15px;max-width:480px;line-height:1.7;margin-bottom:1.5rem;}
+.hero-btns{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-primary{background:var(--blue);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;border:none;border-radius:8px;padding:11px 24px;cursor:pointer;transition:opacity .15s;}
+.btn-primary:hover{opacity:.85;}
+.btn-ghost{background:transparent;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:500;border:1px solid var(--border2);border-radius:8px;padding:11px 24px;cursor:pointer;transition:border-color .15s;}
+.btn-ghost:hover{border-color:var(--blue);}
+
+/* PRODUCTS */
+.section-label{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:1.25rem;}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-bottom:2rem;}
+.product-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s;}
+.product-card:hover{border-color:var(--border2);}
+.product-img{width:100%;height:155px;display:flex;align-items:center;justify-content:center;font-size:4rem;border-bottom:1px solid var(--border);background:var(--surface);}
+.product-body{padding:1rem;}
+.product-name{font-weight:600;font-size:14px;margin-bottom:4px;}
+.product-desc{font-size:12px;color:var(--muted);margin-bottom:.75rem;line-height:1.5;}
+.product-footer{display:flex;align-items:center;justify-content:space-between;}
+.product-price{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;color:var(--blue);}
+.add-btn{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(79,142,247,.3);border-radius:6px;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;transition:background .15s;}
+.add-btn:hover{background:var(--blue);color:#fff;}
+
+/* ABOUT */
+.about-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;margin-bottom:1rem;}
+.about-section h2{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.08em;margin-bottom:.75rem;}
+.about-section p{color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:1rem;}
+.about-section p:last-child{margin-bottom:0;}
+.why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:1rem;}
+.why-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;}
+.why-num{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--blue);line-height:1;}
+.why-title{font-size:13px;font-weight:600;margin:.35rem 0 .4rem;}
+.why-text{font-size:12px;color:var(--muted);line-height:1.6;}
+.audience-box{border-radius:10px;padding:1.25rem;margin-top:.75rem;}
+.ab-blue{background:var(--blue-dim);border:1px solid rgba(79,142,247,.2);}
+.ab-green{background:var(--green-bg);border:1px solid rgba(46,204,138,.2);}
+.audience-box h3{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.08em;margin-bottom:.5rem;}
+.ab-blue h3{color:var(--blue);}
+.ab-green h3{color:var(--green);}
+.audience-box p{font-size:13px;color:var(--muted);line-height:1.7;margin:0;}
+.comp-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:.75rem;}
+.comp-table th{text-align:left;padding:8px 10px;background:var(--surface);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);}
+.comp-table td{padding:9px 10px;border-bottom:1px solid var(--border);}
+.comp-table tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:20px;}
+.badge.us{background:var(--green-bg);color:var(--green);}
+.badge.them{background:var(--red-bg);color:var(--red);}
+
+/* MARKETING */
+.ad-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1rem;}
+.ad-header{background:var(--surface);border-bottom:1px solid var(--border);padding:.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;}
+.ad-label{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+.ad-body{padding:1.25rem;font-size:13.5px;line-height:1.8;color:var(--text);white-space:pre-wrap;min-height:60px;}
+.gen-btn{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(79,142,247,.3);border-radius:6px;font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace;padding:5px 12px;cursor:pointer;transition:background .15s;white-space:nowrap;}
+.gen-btn:hover{background:var(--blue);color:#fff;}
+.loading::after{content:'';animation:dots 1.2s steps(4,end) infinite;}
+@keyframes dots{0%,20%{content:''}40%{content:'.'}60%{content:'..'}80%,100%{content:'...'}}
+
+/* FINANCIALS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+.card-title{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:1rem;}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1rem;}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;}
+.metric-value{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.04em;}
+.mv-green{color:var(--green);}
+.mv-red{color:var(--red);}
+.mv-blue{color:var(--blue);}
+.mv-yellow{color:var(--yellow);}
+.chart-wrap{position:relative;width:100%;height:260px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.result-box{border-radius:8px;padding:.9rem 1.1rem;margin-top:.75rem;}
+.rb-blue{background:var(--blue-dim);border:1px solid rgba(79,142,247,.2);}
+.rb-green{background:var(--green-bg);border:1px solid rgba(46,204,138,.2);}
+.rb-red{background:var(--red-bg);border:1px solid rgba(240,107,107,.2);}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;color:var(--muted);}
+.result-row:last-child{border-bottom:none;}
+.result-row strong{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);}
+.be-bar{flex:1;height:10px;background:var(--surface);border-radius:5px;overflow:hidden;}
+.be-fill{height:100%;background:var(--blue);border-radius:5px;transition:width .4s;}
+.order-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+
+.skill-chip{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.05em;padding:3px 10px;border-radius:20px;margin:2px;}
+.chip-math{background:rgba(245,197,66,.1);color:var(--yellow);border:1px solid rgba(245,197,66,.2);}
+.chip-ela{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(79,142,247,.2);}
+.skill-strip{margin-bottom:1.25rem;}
+
+@media(max-width:600px){.two-col{grid-template-columns:1fr;}.hero h1{font-size:2.4rem;}.cart-drawer{width:100%;}}
+</style>
+</head>
+<body>
+
+<div class="cart-overlay" id="overlay" onclick="toggleCart()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-hd">
+    <h2>Your Cart</h2>
+    <button class="close-btn" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <p class="empty-cart">Your cart is empty.</p>
+  </div>
+  <div class="cart-footer" id="cartFooter" style="display:none">
+    <div class="cart-line"><span>Subtotal</span><strong id="c-sub">$0.00</strong></div>
+    <div class="cart-line"><span>Sales Tax (7%)</span><strong id="c-tax">$0.00</strong></div>
+    <div class="cart-total"><span>Total</span><span id="c-total">$0.00</span></div>
+    <button class="checkout-btn" onclick="checkout()">Place Order →</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo">DROP<span>ZONE</span></div>
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('store',this)">Store</button>
+    <button class="tab-btn" onclick="switchTab('about',this)">About Us</button>
+    <button class="tab-btn" onclick="switchTab('marketing',this)">Marketing</button>
+    <button class="tab-btn" onclick="switchTab('financials',this)">Financials</button>
+  </nav>
+  <button class="cart-btn" onclick="toggleCart()">
+    🛒 Cart <span class="cart-count" id="cartCount">0</span>
+  </button>
+</header>
+
+<main>
+
+<!-- ════════ STORE ════════ -->
+<div class="tab-panel active" id="tab-store">
+  <div class="hero">
+    <div class="hero-tag">Spring 2026 Drop — Limited to 25 units each</div>
+    <h1>Wear the<br>Culture.</h1>
+    <p>DropZone makes exclusive custom streetwear for students who refuse to dress like everyone else. Every design drops once — when it's gone, it's gone forever.</p>
+    <div class="hero-btns">
+      <button class="btn-primary" onclick="document.getElementById('products-anchor').scrollIntoView({behavior:'smooth'})">Shop the Drop</button>
+      <button class="btn-ghost" onclick="switchTab('about', document.querySelectorAll('.tab-btn')[1])">Our Story →</button>
+    </div>
+  </div>
+
+  <div class="section-label" id="products-anchor">Spring 2026 Collection — 7 items</div>
+  <div class="product-grid" id="productGrid"></div>
+</div>
+
+<!-- ════════ ABOUT ════════ -->
+<div class="tab-panel" id="tab-about">
+
+  <div class="about-section">
+    <div class="section-label">Our Story — Informational Writing</div>
+    <h2>Built in a Bedroom.<br>Worn Everywhere.</h2>
+    <p>DropZone started with one simple observation: why is it so hard to find streetwear that's actually exclusive, actually premium, and actually affordable? Big brands charge $120 for a hoodie most people already own. Fast fashion sells you the same shirt as a thousand other people. We wanted something different.</p>
+    <p>Every DropZone piece is designed in-house, printed locally on heavyweight blanks, and dropped in batches of 25. Once a design sells out, it's retired permanently. That's not a marketing gimmick — it's the entire business model. Your fit stays rare because we keep it that way.</p>
+  </div>
+
+  <div class="about-section">
+    <div class="section-label">Why Choose Us — Argumentation</div>
+    <h2>Three Reasons We Win.</h2>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-num">01</div>
+        <div class="why-title">Exclusive by Design</div>
+        <div class="why-text">Every drop is capped at 25 units and never reprinted. You're not buying a shirt — you're buying a piece that most people will never own.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-num">02</div>
+        <div class="why-title">Premium Without the Price</div>
+        <div class="why-text">We use 400g heavyweight blanks — the same weight as brands charging triple our price. We cut costs by keeping production local and drops small, not by cutting quality.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-num">03</div>
+        <div class="why-title">Community Drives the Brand</div>
+        <div class="why-text">Our next design is voted on by followers via Instagram polls. You shape what gets made — something no big brand will ever offer its customers.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="about-section">
+    <div class="section-label">Who We Dress — Audience Awareness</div>
+    <h2>Our Customers.</h2>
+    <div class="audience-box ab-blue">
+      <h3>Primary Audience</h3>
+      <p>High school and college students aged 15–22 who follow streetwear culture on Instagram and TikTok. They value exclusivity and self-expression, spend $25–$60 per clothing purchase, and are heavily influenced by peer style. They want to look like they know something others don't — DropZone delivers exactly that.</p>
+    </div>
+    <div class="audience-box ab-green">
+      <h3>Secondary Audience</h3>
+      <p>Gift-buyers (parents, relatives, ages 28–45) looking for something cool and affordable for teens. Our $18–$39 price range fits their budget while genuinely impressing the recipient — a rare combination in the streetwear market.</p>
+    </div>
+  </div>
+
+  <div class="about-section">
+    <div class="section-label">Market Research — Competitor Analysis</div>
+    <h2>Where We Fit In.</h2>
+    <p>We researched four competitors to map the pricing landscape and identify our gap.</p>
+    <table class="comp-table">
+      <thead><tr><th>Brand</th><th>Avg Hoodie Price</th><th>Exclusive?</th><th>Student-Friendly?</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><strong>DropZone ← us</strong></td><td style="font-family:'JetBrains Mono',monospace">$39</td><td>Yes — 25 units max</td><td>Yes</td><td><span class="badge us">Our sweet spot</span></td></tr>
+        <tr><td>H&amp;M Divided</td><td style="font-family:'JetBrains Mono',monospace">$25</td><td>No</td><td>Yes</td><td><span class="badge them">Mass market</span></td></tr>
+        <tr><td>EPTM</td><td style="font-family:'JetBrains Mono',monospace">$65</td><td>Somewhat</td><td>Borderline</td><td><span class="badge them">Overpriced</span></td></tr>
+        <tr><td>Fear of God Essentials</td><td style="font-family:'JetBrains Mono',monospace">$110</td><td>No</td><td>No</td><td><span class="badge them">Out of reach</span></td></tr>
+        <tr><td>Local Custom Printer</td><td style="font-family:'JetBrains Mono',monospace">$22</td><td>No</td><td>Yes</td><td><span class="badge them">Generic quality</span></td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin-top:.75rem">Market gap: No brand in the $30–$45 range offers both premium quality <em>and</em> limited-run exclusivity for students. That gap is ours.</p>
+  </div>
+</div>
+
+<!-- ════════ MARKETING ════════ -->
+<div class="tab-panel" id="tab-marketing">
+  <div class="section-label" style="margin-bottom:.4rem">Marketing Materials</div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">All content is AI-generated and tailored to our brand and audience. Hit Regenerate for a fresh version of any piece.</p>
+
+  <div class="ad-card">
+    <div class="ad-header">
+      <div class="ad-label">📱 Instagram / TikTok Ad Script — Persuasive Writing</div>
+      <button class="gen-btn" onclick="genContent('ad')">Regenerate</button>
+    </div>
+    <div class="ad-body loading" id="ad-body"></div>
+  </div>
+
+  <div class="ad-card">
+    <div class="ad-header">
+      <div class="ad-label">🏷️ Product Descriptions — Informational Writing</div>
+      <button class="gen-btn" onclick="genContent('desc')">Regenerate</button>
+    </div>
+    <div class="ad-body loading" id="desc-body"></div>
+  </div>
+
+  <div class="ad-card">
+    <div class="ad-header">
+      <div class="ad-label">🎤 Shark Tank Investor Pitch Script — Presentation Speaking</div>
+      <button class="gen-btn" onclick="genContent('pitch')">Regenerate</button>
+    </div>
+    <div class="ad-body loading" id="pitch-body"></div>
+  </div>
+</div>
+
+<!-- ════════ FINANCIALS ════════ -->
+<div class="tab-panel" id="tab-financials">
+  <div class="section-label">Financial Overview — Owner's Dashboard</div>
+  <div class="skill-strip">
+    <span class="skill-chip chip-math">Unit Rate</span>
+    <span class="skill-chip chip-math">Percents</span>
+    <span class="skill-chip chip-math">Profit / Loss</span>
+    <span class="skill-chip chip-math">Revenue</span>
+    <span class="skill-chip chip-math">Break-Even Point</span>
+    <span class="skill-chip chip-math">Graphing Sales Trends</span>
+    <span class="skill-chip chip-math">Budgeting</span>
+    <span class="skill-chip chip-ela">Informational Writing</span>
+    <span class="skill-chip chip-ela">Research</span>
+    <span class="skill-chip chip-ela">Persuasive Writing</span>
+    <span class="skill-chip chip-ela">Presentation Speaking</span>
+    <span class="skill-chip chip-ela">Argumentation</span>
+    <span class="skill-chip chip-ela">Audience Awareness</span>
+  </div>
+
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Total Revenue</div><div class="metric-value mv-green" id="f-rev">$0</div></div>
+    <div class="metric"><div class="metric-label">Total Costs</div><div class="metric-value mv-red" id="f-cost">$0</div></div>
+    <div class="metric"><div class="metric-label">Net Profit / Loss</div><div class="metric-value" id="f-profit">$0</div></div>
+    <div class="metric"><div class="metric-label">Units Sold</div><div class="metric-value mv-blue" id="f-units">0</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Revenue vs. Cost — Sales Trend</div>
+    <div class="chart-wrap">
+      <canvas id="trendChart" role="img" aria-label="Bar chart comparing revenue, cost, and profit per order"></canvas>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Unit Rate &amp; Margin by Product</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;" id="pricingTable"></table>
+    </div>
+    <div class="card">
+      <div class="card-title">Startup Budget (One-Time Costs)</div>
+      <div class="result-box rb-blue">
+        <div class="result-row"><span>Blank hoodies (25 × $14)</span><strong>$350</strong></div>
+        <div class="result-row"><span>Blank tees (25 × $7)</span><strong>$175</strong></div>
+        <div class="result-row"><span>Screen printing setup</span><strong>$120</strong></div>
+        <div class="result-row"><span>Packaging &amp; bags</span><strong>$40</strong></div>
+        <div class="result-row"><span>Instagram ads — Month 1</span><strong>$60</strong></div>
+        <div class="result-row" style="border-top:1px solid rgba(255,255,255,.1);padding-top:8px;margin-top:4px">
+          <span><strong>Total Startup Cost</strong></span><strong style="color:var(--blue)">$745</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Break-Even Analysis</div>
+    <div class="two-col" style="margin-bottom:1rem;gap:.75rem">
+      <div style="font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:.5rem">
+        <div>Fixed costs to recover: <strong style="color:var(--text);font-family:'JetBrains Mono',monospace">$745.00</strong></div>
+        <div>Avg contribution / unit: <strong style="color:var(--text);font-family:'JetBrains Mono',monospace" id="be-contrib">—</strong></div>
+        <div>Break-even units needed: <strong style="color:var(--yellow);font-family:'JetBrains Mono',monospace" id="be-units">—</strong></div>
+      </div>
+      <div style="font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:.5rem">
+        <div>Units sold so far: <strong style="color:var(--text);font-family:'JetBrains Mono',monospace" id="be-sold">0</strong></div>
+        <div>Revenue collected: <strong style="color:var(--text);font-family:'JetBrains Mono',monospace" id="be-rev-so-far">$0</strong></div>
+        <div>Status: <strong id="be-status-text" style="color:var(--muted)">—</strong></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="be-pct" style="font-family:'JetBrains Mono',monospace;font-size:13px;min-width:42px;color:var(--blue)">0%</span>
+      <div class="be-bar"><div class="be-fill" id="be-fill" style="width:0"></div></div>
+      <span style="font-size:11px;color:var(--muted)">100% = break-even</span>
+    </div>
+    <div id="be-msg" class="result-box rb-blue" style="margin-top:1rem">Add items to your cart and place an order from the Store tab to track progress here.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Order History</div>
+    <div id="orderList"><p style="color:var(--muted);font-size:13px;text-align:center;padding:1.5rem">No orders yet — visit the Store tab!</p></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const PRODUCTS = [
+  {id:1,name:'Monolith Hoodie',   emoji:'🖤',desc:'400g heavyweight fleece. Oversized fit. Dropped shoulders. Screen-printed front graphic.',cost:14,price:39,batch:25},
+  {id:2,name:'Static Tee',        emoji:'⚡',desc:'180g cotton. Boxy cut. Lightning-bolt chest graphic in high-density ink.',cost:7,price:27,batch:25},
+  {id:3,name:'Void Crewneck',     emoji:'🌀',desc:'320g fleece crewneck. Relaxed fit. Abstract spiral graphic on back. Limited run.',cost:12,price:35,batch:25},
+  {id:4,name:'Archive Cargo Short',emoji:'📦',desc:'Twill fabric, 6-pocket silhouette. Embroidered DZ patch on left leg.',cost:11,price:32,batch:20},
+  {id:5,name:'Signal Cap',        emoji:'🧢',desc:'6-panel structured cap. Embroidered logo. Adjustable strap. One size.',cost:6,price:22,batch:30},
+  {id:6,name:'Frequency Long Sleeve',emoji:'📡',desc:'210g cotton. Antenna graphic down the left sleeve. Slightly cropped.',cost:8,price:29,batch:25},
+  {id:7,name:'DZ Tote Bag',       emoji:'🛍️',desc:'14oz canvas tote. DropZone full-print design. Reinforced handles.',cost:5,price:18,batch:40},
+];
+
+const TAX = 0.07;
+const FIXED = 745;
+let cart = [], orders = [];
+
+// ── STORE ──────────────────────────────────────────────
+function renderProducts() {
+  document.getElementById('productGrid').innerHTML = PRODUCTS.map(p =>
+    `<div class="product-card">
+      <div class="product-img">${p.emoji}</div>
+      <div class="product-body">
+        <div class="product-name">${p.name}</div>
+        <div class="product-desc">${p.desc}</div>
+        <div class="product-footer">
+          <div class="product-price">$${p.price.toFixed(2)}</div>
+          <button class="add-btn" onclick="addToCart(${p.id})">+ Add</button>
+        </div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+// ── CART ───────────────────────────────────────────────
+function addToCart(id) {
+  const p = PRODUCTS.find(x=>x.id===id);
+  const ex = cart.find(c=>c.id===id);
+  if (ex) ex.qty++; else cart.push({...p,qty:1});
+  renderCart();
+}
+
+function removeFromCart(id) {
+  cart = cart.filter(c=>c.id!==id);
+  renderCart();
+}
+
+function toggleCart() {
+  document.getElementById('overlay').classList.toggle('open');
+  document.getElementById('cartDrawer').classList.toggle('open');
+}
+
+function renderCart() {
+  document.getElementById('cartCount').textContent = cart.reduce((s,c)=>s+c.qty,0);
+  const items = document.getElementById('cartItems');
+  const footer = document.getElementById('cartFooter');
+  if (!cart.length) {
+    items.innerHTML = '<p class="empty-cart">Your cart is empty.</p>';
+    footer.style.display = 'none'; return;
+  }
+  items.innerHTML = cart.map(c =>
+    `<div class="cart-item">
+      <div class="ci-icon">${c.emoji}</div>
+      <div class="ci-info">
+        <div class="ci-name">${c.name} × ${c.qty}</div>
+        <div class="ci-price">$${c.price.toFixed(2)} each</div>
+      </div>
+      <button class="ci-remove" onclick="removeFromCart(${c.id})">✕</button>
+    </div>`
+  ).join('');
+  const sub = cart.reduce((s,c)=>s+c.price*c.qty,0);
+  const tax = sub*TAX;
+  document.getElementById('c-sub').textContent  = '$'+sub.toFixed(2);
+  document.getElementById('c-tax').textContent  = '$'+tax.toFixed(2);
+  document.getElementById('c-total').textContent= '$'+(sub+tax).toFixed(2);
+  footer.style.display = 'block';
+}
+
+function checkout() {
+  if (!cart.length) return;
+  const sub   = cart.reduce((s,c)=>s+c.price*c.qty,0);
+  const tax   = sub*TAX;
+  const cogs  = cart.reduce((s,c)=>s+c.cost*c.qty,0);
+  const units = cart.reduce((s,c)=>s+c.qty,0);
+  const label = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  orders.push({label, revenue:sub+tax, cogs, units, tax, items:cart.map(c=>`${c.qty}× ${c.name}`).join(', ')});
+  cart = [];
+  renderCart();
+  toggleCart();
+  alert('Order placed! 🎉 Check the Financials tab to see your numbers update.');
+}
+
+// ── FINANCIALS ─────────────────────────────────────────
+let trendChart = null;
+
+function refreshFinancials() {
+  const totalRev   = orders.reduce((s,o)=>s+o.revenue,0);
+  const totalCogs  = orders.reduce((s,o)=>s+o.cogs,0);
+  const totalUnits = orders.reduce((s,o)=>s+o.units,0);
+  const netProfit  = totalRev - totalCogs - FIXED;
+
+  document.getElementById('f-rev').textContent   = '$'+totalRev.toFixed(2);
+  document.getElementById('f-cost').textContent  = '$'+(totalCogs+FIXED).toFixed(2);
+  document.getElementById('f-units').textContent = totalUnits;
+  const pe = document.getElementById('f-profit');
+  pe.textContent  = (netProfit>=0?'+':'')+' $'+Math.abs(netProfit).toFixed(2);
+  pe.className    = 'metric-value '+(netProfit>=0?'mv-green':'mv-red');
+
+  // Pricing table
+  document.getElementById('pricingTable').innerHTML =
+    `<thead><tr>
+      <th style="text-align:left;padding:7px 8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">Item</th>
+      <th style="text-align:left;padding:7px 8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">Unit Cost</th>
+      <th style="text-align:left;padding:7px 8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">Sell Price</th>
+      <th style="text-align:left;padding:7px 8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">Margin</th>
+    </tr></thead><tbody>`+
+    PRODUCTS.map(p=>{
+      const m = ((p.price-p.cost)/p.price*100).toFixed(0);
+      const mc= m>=60?'var(--green)':m>=40?'var(--yellow)':'var(--red)';
+      return `<tr>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border)">${p.name}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:12px">$${p.cost.toFixed(2)}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:12px">$${p.price.toFixed(2)}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:12px;color:${mc}">${m}%</td>
+      </tr>`;
+    }).join('')+`</tbody>`;
+
+  // Break-even
+  const avgContrib = PRODUCTS.reduce((s,p)=>s+(p.price-p.cost),0)/PRODUCTS.length;
+  const beUnits    = Math.ceil(FIXED/avgContrib);
+  const pct        = Math.min(Math.round((totalUnits/beUnits)*100),200);
+  document.getElementById('be-contrib').textContent    = '$'+avgContrib.toFixed(2);
+  document.getElementById('be-units').textContent      = beUnits;
+  document.getElementById('be-sold').textContent       = totalUnits;
+  document.getElementById('be-rev-so-far').textContent = '$'+totalRev.toFixed(2);
+  document.getElementById('be-fill').style.width       = Math.min(pct,100)+'%';
+  document.getElementById('be-pct').textContent        = pct+'%';
+  const bst = document.getElementById('be-status-text');
+  const bmsg= document.getElementById('be-msg');
+  if (totalUnits >= beUnits) {
+    bst.textContent='Profitable ✓'; bst.style.color='var(--green)';
+    bmsg.className='result-box rb-green';
+    bmsg.textContent=`Break-even passed! You've sold ${totalUnits} units — ${totalUnits-beUnits} beyond the ${beUnits}-unit break-even point. Every additional unit is now pure profit at an average of $${avgContrib.toFixed(2)} per unit.`;
+  } else {
+    bst.textContent='Not yet profitable'; bst.style.color='var(--yellow)';
+    bmsg.className='result-box rb-blue';
+    bmsg.textContent=`${beUnits-totalUnits} more units needed to break even. Each unit you sell contributes an average of $${avgContrib.toFixed(2)} toward recovering the $${FIXED} startup cost.`;
+  }
+
+  // Order history
+  const ol = document.getElementById('orderList');
+  ol.innerHTML = orders.length
+    ? [...orders].reverse().map(o=>`
+      <div class="order-item">
+        <div>
+          <div style="font-weight:600;font-size:13px">${o.label} — ${o.items}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:3px">${o.units} unit${o.units!==1?'s':''} · subtotal $${(o.revenue-o.tax).toFixed(2)} + tax $${o.tax.toFixed(2)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--green)">$${o.revenue.toFixed(2)}</div>
+        </div>
+      </div>`).join('')
+    : '<p style="color:var(--muted);font-size:13px;text-align:center;padding:1.5rem">No orders yet.</p>';
+
+  // Chart
+  if (trendChart) trendChart.destroy();
+  const labels= orders.length ? orders.map(o=>o.label)   : ['Week 1','Week 2','Week 3','Week 4'];
+  const revs  = orders.length ? orders.map(o=>o.revenue)  : [0,0,0,0];
+  const costs = orders.length ? orders.map(o=>o.cogs)     : [0,0,0,0];
+  const profs = orders.length ? orders.map(o=>+(o.revenue-o.cogs).toFixed(2)) : [0,0,0,0];
+  trendChart = new Chart(document.getElementById('trendChart'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Revenue',    data:revs, backgroundColor:'rgba(46,204,138,0.65)',borderRadius:5,borderSkipped:false},
+      {label:'COGS',       data:costs,backgroundColor:'rgba(240,107,107,0.55)',borderRadius:5,borderSkipped:false},
+      {label:'Gross Profit',data:profs,type:'line',borderColor:'#4F8EF7',borderWidth:2.5,pointRadius:5,pointBackgroundColor:'#4F8EF7',fill:false,tension:0.3}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top',labels:{color:'#7A7A95',font:{size:11},boxWidth:12}}},
+      scales:{
+        x:{ticks:{color:'#7A7A95',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#7A7A95',callback:v=>'$'+v,font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+// ── MARKETING ─────────────────────────────────────────
+const prompts = {
+  ad:`Write a 60-second punchy video ad script for DropZone, a custom streetwear brand made by students for students. Products: limited graphic hoodies ($39), tees ($27), crewnecks ($35), cargo shorts ($32), caps ($22), long sleeves ($29), tote bags ($18). Every item is capped at 25 units — once it's gone, it's gone forever. Target audience: high school and college students 15–22 who follow streetwear on Instagram and TikTok. Write the script with a strong hook, fast product mentions, the exclusivity angle, and a call to action. Include stage directions in brackets. ~120 words.`,
+  desc:`Write informational product descriptions for three DropZone streetwear items: (1) Monolith Hoodie — $39, 400g heavyweight fleece, oversized fit, screen-printed front graphic, batch of 25. (2) Static Tee — $27, 180g cotton, boxy cut, lightning-bolt chest graphic in high-density ink. (3) Void Crewneck — $35, 320g fleece, relaxed fit, abstract spiral print on back, limited run. For each: 3–4 sentences covering materials, the design, who it's for, and why it's worth buying. Tone: confident, clear, cool streetwear brand voice. No filler.`,
+  pitch:`Write a 90-second verbal Shark Tank pitch script for a student presenting DropZone, their custom streetwear business. Key numbers: startup cost $745, avg unit cost ~$9, avg sell price ~$29, avg gross margin ~68%, drops capped at 25 units each, target market is students 15–22. Competitive advantage: exclusive limited drops, premium blanks at student prices, community-voted designs. Write it as something a real confident student would say aloud — specific, persuasive, and ending with a clear investor ask. ~200 words.`
+};
+
+let generated = {};
+async function genContent(type) {
+  const el = document.getElementById(type+'-body');
+  el.textContent = ''; el.className = 'ad-body loading';
+  try {
+    const res  = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,messages:[{role:'user',content:prompts[type]}]})
+    });
+    const data = await res.json();
+    el.className = 'ad-body';
+    el.textContent = data.content?.map(b=>b.text||'').join('')||'Error.';
+    generated[type] = true;
+  } catch(e) {
+    el.className='ad-body'; el.textContent='Connection error. Please try again.';
+  }
+}
+
+// ── TABS ───────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id==='financials') refreshFinancials();
+  if (id==='marketing' && !generated.ad) { genContent('ad'); genContent('desc'); genContent('pitch'); }
+}
+
+// ── INIT ───────────────────────────────────────────────
+renderProducts();
+</script>
+</body>
+</html>
